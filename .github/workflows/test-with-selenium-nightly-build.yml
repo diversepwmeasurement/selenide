@@ -1,34 +1,42 @@
-name: 'Run tests with Selenium nightly build'
-on:
-  schedule:
-    - cron: '6 6 * * *'
-
 jobs:
   run-tests-on-linux:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    steps:
+    - continue-on-error: true
+      name: Checkout
+      uses: actions/checkout@v4
+    - continue-on-error: true
+      name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        cache: gradle
+        distribution: temurin
+        java-version: '17'
+    - continue-on-error: true
+      name: Build with Gradle
+      uses: gradle/gradle-build-action@v3
+      with:
+        arguments: ${{ matrix.gradle-task }} -PseleniumVersionNightlyBuild=4.21.0-SNAPSHOT
+          --no-parallel --no-daemon --console=plain
+    - continue-on-error: true
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-report-linux-${{matrix.gradle-task}}
+        path: '**/build/reports
+
+          **/build/test-results
+
+          '
+        retention-days: 14
     strategy:
       fail-fast: false
       matrix:
-        gradle-task: [ 'check', 'chrome_headless_smoke' ]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          cache: 'gradle'
-          java-version: '17'
-      - name: Build with Gradle
-        uses: gradle/gradle-build-action@v3
-        with:
-          arguments: ${{ matrix.gradle-task }} -PseleniumVersionNightlyBuild=4.21.0-SNAPSHOT --no-parallel --no-daemon --console=plain
-      - uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: test-report-linux-${{matrix.gradle-task}}
-          retention-days: 14
-          path: |
-            **/build/reports
-            **/build/test-results
+        gradle-task:
+        - check
+        - chrome_headless_smoke
+name: Run tests with Selenium nightly build
+on:
+  repository_dispatch:
+    types: trigger-ga___test-with-selenium-nightly-build.yml
